@@ -1,0 +1,104 @@
+
+class Game
+    attr_accessor :secret, :secret_length, :displayed_slots, :attempts, :guess
+
+    def initialize
+        @attempts = 7
+        @secret = choose_secret.downcase
+        @secret_length = @secret.length
+        @secret_array = @secret.split("")
+        @displayed_slots = ("_" * @secret_length).split("")
+    end
+
+    def choose_secret 
+        dictionary = File.open('google-10000-english-no-swears.txt', 'r');
+        text = dictionary.read()
+        splitted = text.split("\n")
+        while true
+            potential = splitted.sample
+            if potential.length < 12 && potential.length > 5
+                return potential
+            else
+                next
+            end
+        end
+    end
+
+    def show_displayed_slots
+        p @displayed_slots 
+    end
+
+    def user_guess
+        puts "What is your guess "
+        @guess = gets.chomp.downcase
+        return @guess   
+    end
+
+    def find_all_correct_positions
+        indexes = []
+        @secret_array.each_with_index do |letter, index|
+            indexes << index if letter == @guess
+        end
+        indexes
+    end
+
+    def replace_valid_letters
+        valid_positions = find_all_correct_positions
+        for i in valid_positions
+            displayed_slots[i] = @guess
+        end
+    end
+
+    def solution_found?
+        displayed_slots == @secret_array || @guess == @secret
+    end
+
+    def is_guess_in_secret?
+        @secret.include?(@guess)
+    end
+
+    def subtract_attempts
+        @attempts -= 1
+    end
+
+    def declare_win
+        puts "You found the answer! The solution was: #{secret}"
+    end
+end
+
+puts "Welcome to a game of Hangman!"
+puts "What file name should I save this game as?"
+filename = gets.chomp.downcase
+newgame = Game.new
+p newgame.secret
+while newgame.attempts != 0
+    newgame.show_displayed_slots
+    newgame.user_guess
+    p newgame.guess
+    if newgame.guess.length == 1
+        if newgame.is_guess_in_secret?
+            newgame.replace_valid_letters
+        else
+            puts "That character does not belong in the secret word"
+            puts "---------------------------------------------------"
+        end
+    else
+        if newgame.solution_found?
+            newgame.declare_win
+            break
+        else
+            puts "Wrong guess"
+            puts "---------------------------------------------------"
+        end    
+    end
+    p newgame.displayed_slots
+    newgame.subtract_attempts
+    if newgame.attempts == 0
+        puts "Game Over!"
+        break
+    end
+    puts "You have #{newgame.attempts} attempts left"
+    puts "---------------------------------------------------"
+end
+
+
