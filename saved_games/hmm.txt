@@ -1,0 +1,1 @@
+{"json_class":"Game","data":{"name":"dummyname","attempts":5,"secret":"reasonably","secret_length":10,"displayed_slots":["r","_","_","s","_","_","_","_","_","_"]}}

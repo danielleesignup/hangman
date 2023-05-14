@@ -1,8 +1,11 @@
+require 'json'
+
 
 class Game
-    attr_accessor :secret, :secret_length, :displayed_slots, :attempts, :guess
+    attr_accessor :secret, :secret_length, :displayed_slots, :attempts, :guess, :name
 
-    def initialize
+    def initialize(name)
+        @name = name
         @attempts = 7
         @secret = choose_secret.downcase
         @secret_length = @secret.length
@@ -10,6 +13,29 @@ class Game
         @displayed_slots = ("_" * @secret_length).split("")
     end
 
+    def to_json(*args)
+        {
+          'json_class' => self.class.name,
+          'data' => {
+            'name' => @name,
+            'attempts' => @attempts,
+            'secret' => @secret,
+            'secret_length' => @secret_length,
+            'displayed_slots' => @displayed_slots
+          }
+        }.to_json(*args)
+    end
+    
+    def self.json_create(data)
+        new_game = self.new(data['data']['name'])
+        new_game.instance_variable_set(:@attempts, data['data']['attempts'])
+        new_game.instance_variable_set(:@secret, data['data']['secret'])
+        new_game.instance_variable_set(:@secret_length, data['data']['secret_length'])
+        new_game.instance_variable_set(:@displayed_slots, data['data']['displayed_slots'])
+        new_game
+    end
+    
+    
     def choose_secret 
         dictionary = File.open('google-10000-english-no-swears.txt', 'r');
         text = dictionary.read()
@@ -31,7 +57,10 @@ class Game
     def user_guess
         puts "What is your guess "
         @guess = gets.chomp.downcase
-        return @guess   
+        if @guess == 'save game'
+            save_game
+        end
+        @guess   
     end
 
     def find_all_correct_positions
@@ -64,12 +93,74 @@ class Game
     def declare_win
         puts "You found the answer! The solution was: #{secret}"
     end
+
+    def reload_game?
+        while true
+            puts "Play a (n)ew game or reload (s)aved game: "
+            choice = gets.chomp.downcase
+            if choice != "n" && choice != "s"
+                puts "Invalid option. Try again"
+                next
+            else
+                return choice
+                break
+            end
+        end
+    end
+
+    def save_game
+        puts "What file name should I save this game as?"
+        filename = gets.chomp.downcase
+        serialized_data = self.to_json
+        file_title = "saved_games/" + filename + '.txt'
+        newfile = File.open(file_title, "w")
+        newfile.puts serialized_data
+        newfile.close
+    end
 end
 
+
+
 puts "Welcome to a game of Hangman!"
-puts "What file name should I save this game as?"
-filename = gets.chomp.downcase
-newgame = Game.new
+newgame2 = Game.new('dummy')
+p newgame2 
+choice = newgame2.reload_game?
+p choice
+if choice == 'n'
+    puts "Starting new game..."
+    puts "At any moment, if you want to save the game, just enter 'save game'"
+    newgame = Game.new('dummyname')
+elsif choice == 's'
+    puts "enter 'exit' to go back to the starting screen"
+    puts "Saved Games:"
+    puts "---------------------------------------------------"
+    directory_path = "/home/daniel/ruby_projects/hangman/saved_games"
+    filenames = Dir.entries(directory_path).reject { |f| File.directory?(f)}
+    filenames.each do |filename|
+        puts filename
+    end
+    puts "---------------------------------------------------"
+    while true
+        puts "Enter filename to reload saved game:"
+        puts "---------------------------------------------------"
+        to_load = gets.chomp
+        if to_load in filenames
+            to_load = directory_path + "/" + to_load
+            to_deserialize = open(to_load, "r")
+            p to_load
+            to_deserialize = to_deserialize.read()
+            p to_deserialize
+            deserialized = JSON.parse(to_deserialize)
+            newgame = Game.json_create(deserialized)
+            break
+        elsif to_load == 'exit'
+            break
+        else
+            puts "file doesn't exist, try again"
+            next
+        end
+    end
+end
 p newgame.secret
 while newgame.attempts != 0
     newgame.show_displayed_slots
@@ -82,6 +173,8 @@ while newgame.attempts != 0
             puts "That character does not belong in the secret word"
             puts "---------------------------------------------------"
         end
+    elsif newgame.guess == "save game"
+        break
     else
         if newgame.solution_found?
             newgame.declare_win
